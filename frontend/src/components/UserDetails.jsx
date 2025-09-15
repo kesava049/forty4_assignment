@@ -41,6 +41,8 @@ const UserDetails = () => {
           <p><strong>Street:</strong> {user.address.street}</p>
           <p><strong>City:</strong> {user.address.city}</p>
           <p><strong>Zipcode:</strong> {user.address.zipcode}</p>
+          <p><strong>Latitude:</strong> {user.address.lat}</p>
+          <p><strong>Longitude:</strong> {user.address.lng}</p>
         </div>
       )}
       <Link to="/" className="button back-button mt-4">Back to Dashboard</Link>

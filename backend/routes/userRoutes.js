@@ -1,14 +1,35 @@
 const express = require("express");
+const { body, validationResult } = require('express-validator'); // 1. Import validation tools
 const { PrismaClient } = require("@prisma/client");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// 2. Define validation rules in a reusable array
+const userValidationRules = [
+  body('name').trim().notEmpty().withMessage('Name cannot be empty.'),
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address.'),
+  body('phone').optional({ checkFalsy: true }).trim().isLength({ min: 10, max: 10 }).withMessage('Phone number must be 10 digits.'),
+  body('address.zipcode').optional({ checkFalsy: true }).trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage('Zipcode must be 6 digits.')
+];
+
+// 3. Create a middleware to handle the result of the validation
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (errors.isEmpty()) {
+    return next();
+  }
+
+  // To make the error more readable on the frontend, we'll format it
+  const errorMessages = errors.array().map(err => err.msg);
+  return res.status(422).json({ error: errorMessages.join(', ') });
+};
+
+// --- ROUTES ---
+
 // GET /api/users - Get all users
 router.get("/", async (req, res) => {
-  const users = await prisma.user.findMany({
-    include: { address: true },
-  });
+  const users = await prisma.user.findMany({ include: { address: true } });
   res.json(users);
 });
 
@@ -24,14 +45,9 @@ router.get("/:id", async (req, res) => {
   res.json(user);
 });
 
-// POST /api/users - Create a new user
-router.post("/", async (req, res) => {
+// POST /api/users - Create a new user with validation
+router.post("/", userValidationRules, validate, async (req, res) => {
   const { name, email, phone, company, address } = req.body;
-
-  if (!name || !email) {
-    return res.status(400).json({ error: "Name and email are required fields." });
-  }
-
   const newUser = await prisma.user.create({
     data: {
       name,
@@ -52,14 +68,12 @@ router.post("/", async (req, res) => {
     },
     include: { address: true },
   });
-
   res.status(201).json(newUser);
 });
 
-// PUT /api/users/:id - Update a user
-router.put("/:id", async (req, res) => {
+// PUT /api/users/:id - Update a user with validation
+router.put("/:id", userValidationRules, validate, async (req, res) => {
   const { name, email, phone, company, address } = req.body;
-
   const updatedUser = await prisma.user.update({
     where: { id: req.params.id },
     data: {
@@ -90,15 +104,12 @@ router.put("/:id", async (req, res) => {
     },
     include: { address: true },
   });
-
   res.json(updatedUser);
 });
 
 // DELETE /api/users/:id - Delete a user
 router.delete("/:id", async (req, res) => {
-  await prisma.user.delete({
-    where: { id: req.params.id },
-  });
+  await prisma.user.delete({ where: { id: req.params.id } });
   res.status(204).send();
 });
 

@@ -24,7 +24,6 @@ const UserForm = () => {
         setLoading(true);
         try {
           const response = await getUserById(id);
-          // Ensure address object exists to avoid errors on undefined
           setFormData({ ...response.data, address: response.data.address || { street: '', city: '', zipcode: '', lat: '', lng: '' } });
         } catch (err) {
           setFormError('Failed to fetch user data.');
@@ -36,14 +35,30 @@ const UserForm = () => {
     }
   }, [id, isEditMode]);
 
+  // --- Enhanced validation function ---
   const validate = () => {
     const newErrors = {};
+    
+    // Name validation
     if (!formData.name) newErrors.name = 'Name is required.';
+
+    // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required.';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address.';
     }
+
+    // Phone validation (optional field, but if filled, should be valid)
+    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+      newErrors.phone = 'Phone number must be 10 digits.';
+    }
+
+    // Zipcode validation (optional, but if filled, should be valid)
+    if (formData.address.zipcode && !/^\d{6}$/.test(formData.address.zipcode)) {
+      newErrors.zipcode = 'Zipcode must be 6 digits.';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -104,6 +119,8 @@ const UserForm = () => {
         <div className="form-group">
           <label>Phone:</label>
           <input type="text" name="phone" value={formData.phone} onChange={handleChange} />
+          {/* Display phone validation error */}
+          {errors.phone && <p className="error-text">{errors.phone}</p>}
         </div>
         <div className="form-group">
           <label>Company:</label>
@@ -123,6 +140,16 @@ const UserForm = () => {
         <div className="form-group">
           <label>Zipcode:</label>
           <input type="text" name="address.zipcode" value={formData.address.zipcode} onChange={handleChange} />
+          {/* Display zipcode validation error */}
+          {errors.zipcode && <p className="error-text">{errors.zipcode}</p>}
+        </div>
+        <div className="form-group">
+          <label>Latitude:</label>
+          <input type="number" step="any" name="address.lat" value={formData.address.lat} onChange={handleChange} />
+        </div>
+        <div className="form-group">
+          <label>Longitude:</label>
+          <input type="number" step="any" name="address.lng" value={formData.address.lng} onChange={handleChange} />
         </div>
 
         <button type="submit" disabled={loading}>
