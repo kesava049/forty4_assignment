@@ -1,4 +1,3 @@
-// src/components/UserForm.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getUserById, createUser, updateUser } from '../services/api';
@@ -9,12 +8,13 @@ const UserForm = () => {
     email: '',
     phone: '',
     company: '',
-    address: { street: '', city: '', zipcode: '', geo: { lat: '', lng: '' } },
+    address: { street: '', city: '', zipcode: '', lat: '', lng: '' },
   });
   const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { id } = useParams(); // Gets the 'id' from the URL if we are editing
+  const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
 
@@ -24,10 +24,10 @@ const UserForm = () => {
         setLoading(true);
         try {
           const response = await getUserById(id);
-          setFormData(response.data);
+          // Ensure address object exists to avoid errors on undefined
+          setFormData({ ...response.data, address: response.data.address || { street: '', city: '', zipcode: '', lat: '', lng: '' } });
         } catch (err) {
-          console.error(err);
-          setErrors({ form: 'Failed to fetch user data.' });
+          setFormError('Failed to fetch user data.');
         } finally {
           setLoading(false);
         }
@@ -44,21 +44,17 @@ const UserForm = () => {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid.';
     }
-    if (!formData.phone) newErrors.phone = 'Phone is required.';
-    if (!formData.address.city) newErrors.city = 'City is required.';
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Handle nested address fields
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
+    if (name.startsWith('address.')) {
+      const field = name.split('.')[1];
       setFormData(prev => ({
         ...prev,
-        [parent]: { ...prev[parent], [child]: value }
+        address: { ...prev.address, [field]: value }
       }));
     } else {
       setFormData({ ...formData, [name]: value });
@@ -70,16 +66,18 @@ const UserForm = () => {
     if (!validate()) return;
 
     setLoading(true);
+    setFormError('');
+
     try {
       if (isEditMode) {
         await updateUser(id, formData);
       } else {
         await createUser(formData);
       }
-      navigate('/'); // Go back to the user list on success
+      navigate('/');
     } catch (err) {
-      console.error(err);
-      setErrors({ form: 'An error occurred. Please try again.' });
+      const errorMessage = err.response?.data?.error || 'An unexpected error occurred.';
+      setFormError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -90,32 +88,41 @@ const UserForm = () => {
   return (
     <div className="container">
       <h1>{isEditMode ? 'Edit User' : 'Add New User'}</h1>
+      {formError && <p className="error-message">{formError}</p>}
       <form onSubmit={handleSubmit} className="user-form">
-        {errors.form && <p className="error">{errors.form}</p>}
-        
+        {/* Basic Info */}
         <div className="form-group">
           <label>Name:</label>
           <input type="text" name="name" value={formData.name} onChange={handleChange} />
-          {errors.name && <p className="error">{errors.name}</p>}
+          {errors.name && <p className="error-text">{errors.name}</p>}
         </div>
         <div className="form-group">
           <label>Email:</label>
           <input type="email" name="email" value={formData.email} onChange={handleChange} />
-          {errors.email && <p className="error">{errors.email}</p>}
+          {errors.email && <p className="error-text">{errors.email}</p>}
         </div>
         <div className="form-group">
           <label>Phone:</label>
           <input type="text" name="phone" value={formData.phone} onChange={handleChange} />
-          {errors.phone && <p className="error">{errors.phone}</p>}
         </div>
         <div className="form-group">
           <label>Company:</label>
           <input type="text" name="company" value={formData.company} onChange={handleChange} />
         </div>
+
+        {/* Address Fields */}
+        <h3 className="form-section-header">Address</h3>
+        <div className="form-group">
+          <label>Street:</label>
+          <input type="text" name="address.street" value={formData.address.street} onChange={handleChange} />
+        </div>
         <div className="form-group">
           <label>City:</label>
           <input type="text" name="address.city" value={formData.address.city} onChange={handleChange} />
-          {errors.city && <p className="error">{errors.city}</p>}
+        </div>
+        <div className="form-group">
+          <label>Zipcode:</label>
+          <input type="text" name="address.zipcode" value={formData.address.zipcode} onChange={handleChange} />
         </div>
 
         <button type="submit" disabled={loading}>

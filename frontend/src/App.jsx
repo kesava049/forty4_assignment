@@ -1,4 +1,3 @@
-// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import UserList from './components/UserList';
@@ -10,10 +9,12 @@ function App() {
   return (
     <Router>
       <div className="app-container">
-        <nav className="navbar">
-          <Link to="/" className="nav-brand">User Dashboard</Link>
-          <Link to="/add" className="nav-link-button">Add New User</Link>
-        </nav>
+        <header>
+          <nav className="navbar">
+            <Link to="/" className="nav-brand">User Dashboard</Link>
+            <Link to="/add" className="nav-link-button">Add New User</Link>
+          </nav>
+        </header>
         <main className="main-content">
           <Routes>
             <Route path="/" element={<UserList />} />
